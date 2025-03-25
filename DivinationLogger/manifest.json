@@ -1,0 +1,9 @@
+{
+    "name": "Divination_Logger",
+    "version_number": "1.0.0",
+    "website_url": "https://github.com/binbinmods/DivinationLogger",
+    "description": "A mod that logs the divination results whenever you enter town.",
+    "dependencies": [
+        "BepInEx-BepInExPack_AcrossTheObelisk-5.4.23"
+    ]
+}
