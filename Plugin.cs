@@ -52,16 +52,6 @@ namespace DivinationLogger{
             // Sets the title, default values, and descriptions
             EnableMod = Config.Bind(new ConfigDefinition(PluginInfo.PLUGIN_NAME, "Enable Mod"), true, new ConfigDescription("If false, disables the mod. Restart the game upon changing this setting."));
             EnableDebug = Config.Bind(new ConfigDefinition(PluginInfo.PLUGIN_NAME, "Enable Debug"), true, new ConfigDescription("If true, Enables Debug Logging."));
-            // Register with Obeliskial Essentials, delete this if you don't need it.
-            // RegisterMod(
-            //     _name: PluginInfo.PLUGIN_NAME,
-            //     _author: "binbin",
-            //     _description: "Sample Plugin",
-            //     _version: PluginInfo.PLUGIN_VERSION,
-            //     _date: ModDate,
-            //     _link: @"https://github.com/binbinmods/SampleCSharpWorkspace"
-            // );
-
             // apply patches
             if(EnableMod.Value)
             {

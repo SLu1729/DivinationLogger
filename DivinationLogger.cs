@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
+using System.IO;
 
 // Make sure your namespace is the same everywhere
 namespace DivinationLogger
@@ -35,7 +36,7 @@ namespace DivinationLogger
 
         public static int GetDivinationTier(int divinationIndex)
         {
-            LogDebug("GetDivinationTier");
+            LogDebug("Divination Tier: " + divinationIndex);
             AtOManager atOManager = AtOManager.Instance;
             if (atOManager == null)
             {
@@ -47,7 +48,7 @@ namespace DivinationLogger
             _DivinationTier.Add(1, 5);
             _DivinationTier.Add(2, 6);
             _DivinationTier.Add(3, 8);
-            _DivinationTier.Add(4, 10);            
+            _DivinationTier.Add(4, 10);
             return _DivinationTier.ContainsKey(divinationIndex) ? _DivinationTier[divinationIndex] : 0;
         }
 
@@ -56,16 +57,30 @@ namespace DivinationLogger
         {
             LogDebug("LogDivinations");
             int ndivinations = atOManager.divinationsNumber;
-            int tierNum = 0; // 0 for Fast, 1 for Basic, 2 for Advanced, 3 for Premium, 4 for Supreme
+            int tierNum = Math.Max(atOManager.GetTownTier(),2); // 0 for Fast, 1 for Basic, 2 for Advanced, 3 for Premium, 4 for Supreme
+            int tiers = 3;
+            int totalDivs = 5;
 
-            Dictionary<int, string[]> cardsByOrder = GetDivinationDictForOneDivination(atOManager, tierNum, ndivinations);
-            
-            // Export cardsByOrder as a json
-            string cardList = JsonUtility.ToJson(cardsByOrder);
+            for (int j = 0; j < tiers; j++)
+            {
+                // loop over next 15 divinations
+                for (int i = 0; i < totalDivs; i++)
+                {
+                    // Get the divination results for one divination
+                    int div = i + ndivinations;
+                    Dictionary<int, string[]> cardsByOrder = GetDivinationDictForOneDivination(atOManager, tierNum+j, div);
+                    foreach (KeyValuePair<int, string[]> kvp in cardsByOrder)
+                    {
+                        string HeroName = AtOManager.Instance?.GetTeam()[kvp.Key].SourceName.ToString() ?? "Unknown";
+                        LogDebug($"Hero {HeroName} {kvp.Key.ToString()} cards: {string.Join(", ", kvp.Value)}");
+                    }
 
-            // save the json to a file
-            System.IO.File.WriteAllText("DivinationResults.json", cardList);
-            // LogDebug($"Divination Results: {card}");
+                    // // Export cardsByOrder as a json
+                    // string cardList = JsonUtility.ToJson(cardsByOrder);
+                    // // save the json to a file
+                    // File.WriteAllText("DivinationResults" + i.ToString() + ".json", cardList);
+                }
+            }
         }
 
         public static Dictionary<int, string[]> GetDivinationDictForOneDivination(AtOManager atOManager, int tierNum, int ndivinations)
@@ -79,7 +94,7 @@ namespace DivinationLogger
             // int typeOfReward;
             // int dustQuantity;
             // int cardTierModFromCorruption;
-            int numCardsReward = tierNum == 0 ? 3 : 4;
+            int numCardsReward = tierNum <=1 ? 3 : 4;
             TierRewardData tierRewardInf;
             TierRewardData tierReward;
             Hero[] theTeam = AtOManager.Instance.GetTeam();
