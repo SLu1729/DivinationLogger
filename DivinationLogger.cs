@@ -11,6 +11,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 using System.IO;
+using System.Text;
 
 // Make sure your namespace is the same everywhere
 namespace DivinationLogger
@@ -32,6 +33,7 @@ namespace DivinationLogger
             LogDebug("GoToTownPostfix");
             // GetDivinationTier();
             LogDivinations(__instance);
+            WriteDivinationsToFile(__instance);
         }
 
         public static int GetDivinationTier(int divinationIndex)
@@ -56,31 +58,143 @@ namespace DivinationLogger
         public static void LogDivinations(AtOManager atOManager)
         {
             LogDebug("LogDivinations");
-            int ndivinations = atOManager.divinationsNumber;
-            int tierNum = Math.Max(atOManager.GetTownTier(),2); // 0 for Fast, 1 for Basic, 2 for Advanced, 3 for Premium, 4 for Supreme
+            int startingDivinationNum = atOManager.divinationsNumber;
+            int tierNum = Math.Max(atOManager.GetTownTier(), 2); // 0 for Fast, 1 for Basic, 2 for Advanced, 3 for Premium, 4 for Supreme
             int tiers = 3;
             int totalDivs = 5;
 
+            Dictionary<int, string> tierNames = new Dictionary<int, string>();
+            tierNames.Add(0, "Fast");
+            tierNames.Add(1, "Basic");
+            tierNames.Add(2, "Advanced");
+            tierNames.Add(3, "Premium");
+            tierNames.Add(4, "Supreme");
+
+            if (atOManager.GetTeam() == null)
+            {
+                LogDebug("Team is null");
+                return;
+            }
+            Hero[] theTeam = atOManager.GetTeam();
             for (int j = 0; j < tiers; j++)
             {
-                // loop over next 15 divinations
                 for (int i = 0; i < totalDivs; i++)
                 {
-                    // Get the divination results for one divination
-                    int div = i + ndivinations;
-                    Dictionary<int, string[]> cardsByOrder = GetDivinationDictForOneDivination(atOManager, tierNum+j, div);
+                    int div = i + startingDivinationNum;
+                    Dictionary<int, string[]> cardsByOrder = GetDivinationDictForOneDivination(atOManager, tierNum + j, div);
+                    LogDebug($"Divination {div.ToString()} {tierNames[tierNum + j]}");
                     foreach (KeyValuePair<int, string[]> kvp in cardsByOrder)
                     {
-                        string HeroName = AtOManager.Instance?.GetTeam()[kvp.Key].SourceName.ToString() ?? "Unknown";
-                        LogDebug($"Hero {HeroName} {kvp.Key.ToString()} cards: {string.Join(", ", kvp.Value)}");
+                        string HeroName = theTeam[kvp.Key].SourceName.ToString() ?? "Unknown";
+                        LogDebug($"Hero {kvp.Key.ToString()}, {HeroName}. Cards: {string.Join(", ", kvp.Value)}");
                     }
 
-                    // // Export cardsByOrder as a json
-                    // string cardList = JsonUtility.ToJson(cardsByOrder);
-                    // // save the json to a file
-                    // File.WriteAllText("DivinationResults" + i.ToString() + ".json", cardList);
                 }
             }
+        }
+
+        public static void WriteDivinationsToFile(AtOManager atOManager)
+        {
+            // Write the divination results to a file
+            // string divinationResults = JsonUtility.ToJson(divinationResults);
+            // File.WriteAllText("DivinationResults.json", divinationResults);
+            int startingDivinationNum = atOManager.divinationsNumber;
+            int tierNum = Math.Max(atOManager.GetTownTier(), 2); // 0 for Fast, 1 for Basic, 2 for Advanced, 3 for Premium, 4 for Supreme
+            int tiers = 3;
+            int totalDivs = 5;
+
+            Dictionary<int, string> tierNames = new Dictionary<int, string>();
+            tierNames.Add(0, "Fast");
+            tierNames.Add(1, "Basic");
+            tierNames.Add(2, "Advanced");
+            tierNames.Add(3, "Premium");
+            tierNames.Add(4, "Supreme");
+            List<string> headerRow = ["Divination"];
+
+            List<List<string>> divinationResults = new List<List<string>>();
+
+            if (atOManager.GetTeam() == null)
+            {
+                LogDebug("Team is null");
+                return;
+            }
+            Hero[] theTeam = atOManager.GetTeam();
+
+            List<string> headerCol = new List<string>();
+            for (int i = 0; i < totalDivs; i++)
+            {
+                for (int j = 0; j < theTeam.Count(); j++)
+                {
+                    headerCol.Add($"Divination {i}: {theTeam[j].SourceName}");
+                }
+            }
+
+            for (int j = 0; j < tiers; j++)
+            {
+                int nCards = 4;
+                string tierName = tierNames[tierNum + j];
+                for (int i = 0; i < nCards; i++)
+                {
+                    headerRow.Add($"{tierName}: Card {i.ToString()}");
+                }
+            }
+
+            // Row = totalDivs_characterName
+
+            for (int divIteration = 0; divIteration < totalDivs; divIteration++)
+            {
+                // List<string> divinationRow = new List<string>();
+                List<List<string>> divinationSetOfChars = new List<List<string>>();
+                for (int i = 0; i < theTeam.Count(); i++)
+                {
+                    divinationSetOfChars.Add(new List<string>());
+                }
+
+                for (int j = 0; j < tiers; j++)
+                {
+
+                    // divinationRow.Add($"{theTeam[j].SourceName}: Divination {divIteration}");
+                    int currentDiv = divIteration + startingDivinationNum;
+                    Dictionary<int, string[]> cardsByOrder = GetDivinationDictForOneDivination(atOManager, tierNum + j, currentDiv);
+                    LogDebug($"Divination {currentDiv.ToString()} {tierNames[tierNum + j]}");
+                    foreach (KeyValuePair<int, string[]> kvp in cardsByOrder)
+                    {
+                        int charIndex = kvp.Key;
+                        string[] listOfCards = kvp.Value;
+                        divinationSetOfChars[charIndex].AddRange(listOfCards);
+                        // string charName = theTeam[kvp.Key].SourceName.ToString() ?? "Unknown" + $"_{currentDiv.ToString()}";
+                        string HeroName = theTeam[kvp.Key].SourceName.ToString() ?? "Unknown";
+                        LogDebug($"Hero {HeroName} {kvp.Key.ToString()} cards: {string.Join(", ", kvp.Value)}");
+                        // divinationRow.AddRange(kvp.Value);
+                    }
+                }
+                foreach (List<string> row in divinationSetOfChars)
+                {
+                    divinationResults.Add(row);
+                }
+            }
+            string filePath;
+            if (AbsoluteFolderPath.Value == "" || AbsoluteFolderPath.Value == null)
+            {
+                string savePath = Path.GetDirectoryName(SaveManager.PathSaveGameTurn(0));
+                filePath = SaveFolder.Value == "" || SaveFolder.Value == null ?  Path.Combine(savePath,atOManager.GetGameId()): Path.Combine(savePath,SaveFolder.Value);
+            }
+            else
+            {
+                filePath = AbsoluteFolderPath.Value;
+            }
+            filePath = "/Users/kevinmccoy/Library/Application Support/Steam/steamapps/common/Across the Obelisk/BepInEx/Mod Development/Custom Mods/DivinationLogger";
+            string fileName = $"DivinationResults_Act_{atOManager.GetActNumberForText()}.csv";
+            if (SaveToCSV.Value)
+            {
+                WriteListToCsv(divinationResults, Path.Combine(filePath, fileName));
+            }
+
+            if (SaveToExcel.Value)
+            {
+                // WriteListToCsv(divinationResults, Path.Combine(filePath, fileName));
+            }
+
         }
 
         public static Dictionary<int, string[]> GetDivinationDictForOneDivination(AtOManager atOManager, int tierNum, int ndivinations)
@@ -94,7 +208,7 @@ namespace DivinationLogger
             // int typeOfReward;
             // int dustQuantity;
             // int cardTierModFromCorruption;
-            int numCardsReward = tierNum <=1 ? 3 : 4;
+            int numCardsReward = tierNum <= 1 ? 3 : 4;
             TierRewardData tierRewardInf;
             TierRewardData tierReward;
             Hero[] theTeam = AtOManager.Instance.GetTeam();
@@ -206,6 +320,36 @@ namespace DivinationLogger
                 }
             }
             return cardsByOrder;
+        }
+
+        public static void WriteListToCsv(List<List<string>> data, string filePath)
+        {
+            try
+            {
+                // Create a StringBuilder to efficiently build the CSV content
+                StringBuilder csvContent = new StringBuilder();
+
+                // Iterate through each row in the list
+                foreach (var row in data)
+                {
+                    // Use string.Join to convert the row to a CSV line
+                    // The second argument escapes commas and quotes if needed
+                    csvContent.AppendLine(string.Join(",", row.Select(field =>
+                        // Escape quotes and wrap in quotes if the field contains a comma
+                        field.Contains(",") || field.Contains("\"")
+                            ? $"\"{field.Replace("\"", "\"\"")}\""
+                            : field)));
+                }
+
+                // Write the CSV content to a file
+                File.WriteAllText(filePath, csvContent.ToString());
+
+                LogDebug($"CSV file successfully created at: {filePath}");
+            }
+            catch (Exception ex)
+            {
+                LogError($"An error occurred: {ex.Message}");
+            }
         }
 
 

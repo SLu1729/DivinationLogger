@@ -36,6 +36,10 @@ namespace DivinationLogger{
         
         public static ConfigEntry<bool> EnableMod { get; set; }
         public static ConfigEntry<bool> EnableDebug { get; set; }
+        public static ConfigEntry<string> SaveFolder { get; set; }
+        public static ConfigEntry<bool> SaveToCSV { get; set; }
+        public static ConfigEntry<bool> SaveToExcel { get; set; }
+        public static ConfigEntry<string> AbsoluteFolderPath { get; set; }
         internal int ModDate = int.Parse(DateTime.Today.ToString("yyyyMMdd"));
         private readonly Harmony harmony = new(PluginInfo.PLUGIN_GUID);
         internal static ManualLogSource Log;
@@ -52,6 +56,10 @@ namespace DivinationLogger{
             // Sets the title, default values, and descriptions
             EnableMod = Config.Bind(new ConfigDefinition(PluginInfo.PLUGIN_NAME, "Enable Mod"), true, new ConfigDescription("If false, disables the mod. Restart the game upon changing this setting."));
             EnableDebug = Config.Bind(new ConfigDefinition(PluginInfo.PLUGIN_NAME, "Enable Debug"), true, new ConfigDescription("If true, Enables Debug Logging."));
+            SaveToCSV = Config.Bind(new ConfigDefinition(PluginInfo.PLUGIN_NAME, "Save to CSV"), true, new ConfigDescription("If true, saves the divinations as a csv file."));
+            SaveToExcel = Config.Bind(new ConfigDefinition(PluginInfo.PLUGIN_NAME, "Save to Excel"), false, new ConfigDescription("If true, saves the divinations as an Excel file."));
+            SaveFolder = Config.Bind(new ConfigDefinition(PluginInfo.PLUGIN_NAME, "Save Folder"), "", new ConfigDescription("Folder to Save to, if left blank, will write to the default save folder/your current seed"));
+            AbsoluteFolderPath= Config.Bind(new ConfigDefinition(PluginInfo.PLUGIN_NAME, "Absolute Folder Path"), "", new ConfigDescription("Absolute FilePath to save to. If left blank, will default to Save Folder. Overrides Save Folder"));
             // apply patches
             if(EnableMod.Value)
             {
