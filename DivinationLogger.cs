@@ -9,7 +9,7 @@ using UnityEngine.Windows.Speech;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.UIElements;
+using OfficeOpenXml;
 using System.IO;
 using System.Text;
 
@@ -59,10 +59,10 @@ namespace DivinationLogger
         {
             LogDebug("LogDivinations");
             int startingDivinationNum = atOManager.divinationsNumber;
-            int tierNum = Math.Max(atOManager.GetTownTier(), 2); // 0 for Fast, 1 for Basic, 2 for Advanced, 3 for Premium, 4 for Supreme
+            int tierNum = atOManager.GetTownTier() == 3 ? 2 : Math.Max(atOManager.GetTownTier(), 1);
             int tiers = 3;
             int totalDivs = 5;
-
+            // 0 for Fast, 1 for Basic, 2 for Advanced, 3 for Premium, 4 for Supreme
             Dictionary<int, string> tierNames = new Dictionary<int, string>();
             tierNames.Add(0, "Fast");
             tierNames.Add(1, "Basic");
@@ -95,11 +95,8 @@ namespace DivinationLogger
 
         public static void WriteDivinationsToFile(AtOManager atOManager)
         {
-            // Write the divination results to a file
-            // string divinationResults = JsonUtility.ToJson(divinationResults);
-            // File.WriteAllText("DivinationResults.json", divinationResults);
             int startingDivinationNum = atOManager.divinationsNumber;
-            int tierNum = Math.Max(atOManager.GetTownTier(), 2); // 0 for Fast, 1 for Basic, 2 for Advanced, 3 for Premium, 4 for Supreme
+            int tierNum = atOManager.GetTownTier() == 3 ? 2 : Math.Max(atOManager.GetTownTier(), 1);
             int tiers = 3;
             int totalDivs = 5;
 
@@ -177,7 +174,7 @@ namespace DivinationLogger
             if (AbsoluteFolderPath.Value == "" || AbsoluteFolderPath.Value == null)
             {
                 string savePath = Path.GetDirectoryName(SaveManager.PathSaveGameTurn(0));
-                filePath = SaveFolder.Value == "" || SaveFolder.Value == null ?  Path.Combine(savePath,atOManager.GetGameId()): Path.Combine(savePath,SaveFolder.Value);
+                filePath = SaveFolder.Value == "" || SaveFolder.Value == null ? Path.Combine(savePath, atOManager.GetGameId()) : Path.Combine(savePath, SaveFolder.Value);
             }
             else
             {
@@ -326,22 +323,16 @@ namespace DivinationLogger
         {
             try
             {
-                // Create a StringBuilder to efficiently build the CSV content
                 StringBuilder csvContent = new StringBuilder();
 
-                // Iterate through each row in the list
                 foreach (var row in data)
                 {
-                    // Use string.Join to convert the row to a CSV line
-                    // The second argument escapes commas and quotes if needed
                     csvContent.AppendLine(string.Join(",", row.Select(field =>
-                        // Escape quotes and wrap in quotes if the field contains a comma
                         field.Contains(",") || field.Contains("\"")
                             ? $"\"{field.Replace("\"", "\"\"")}\""
                             : field)));
                 }
 
-                // Write the CSV content to a file
                 File.WriteAllText(filePath, csvContent.ToString());
 
                 LogDebug($"CSV file successfully created at: {filePath}");
@@ -350,6 +341,31 @@ namespace DivinationLogger
             {
                 LogError($"An error occurred: {ex.Message}");
             }
+        }
+
+        public static void WriteListToExcel(List<List<string>> data, string filePath)
+        {
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+            using (var package = new ExcelPackage())
+            {
+                var worksheet = package.Workbook.Worksheets.Add("Data");
+
+                for (int rowIndex = 0; rowIndex < data.Count; rowIndex++)
+                {
+                    for (int colIndex = 0; colIndex < data[rowIndex].Count; colIndex++)
+                    {
+                        worksheet.Cells[rowIndex + 1, colIndex + 1].Value = data[rowIndex][colIndex];
+                    }
+                }
+
+                worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
+
+                FileInfo fileInfo = new FileInfo(filePath);
+                package.SaveAs(fileInfo);
+            }
+
+            LogDebug($"Excel file created at: {filePath}");
         }
 
 
