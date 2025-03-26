@@ -12,6 +12,7 @@ using UnityEngine;
 using OfficeOpenXml;
 using System.IO;
 using System.Text;
+using static Microsoft.IO.RecyclableMemoryStream;
 
 // Make sure your namespace is the same everywhere
 namespace DivinationLogger
@@ -32,7 +33,7 @@ namespace DivinationLogger
         {
             LogDebug("GoToTownPostfix");
             // GetDivinationTier();
-            LogDivinations(__instance);
+            if(LogToLogOutput.Value) {LogDivinations(__instance);}
             WriteDivinationsToFile(__instance);
         }
 
@@ -59,9 +60,9 @@ namespace DivinationLogger
         {
             LogDebug("LogDivinations");
             int startingDivinationNum = atOManager.divinationsNumber;
-            int tierNum = atOManager.GetTownTier() == 3 ? 2 : Math.Max(atOManager.GetTownTier(), 1);
+            int tierNum = atOManager.GetTownTier() == 3 ? 2 : Math.Min(atOManager.GetTownTier(), 1);
             int tiers = 3;
-            int totalDivs = 5;
+            int totalDivs = DivinationsToLog.Value;
             // 0 for Fast, 1 for Basic, 2 for Advanced, 3 for Premium, 4 for Supreme
             Dictionary<int, string> tierNames = new Dictionary<int, string>();
             tierNames.Add(0, "Fast");
@@ -81,12 +82,36 @@ namespace DivinationLogger
                 for (int i = 0; i < totalDivs; i++)
                 {
                     int div = i + startingDivinationNum;
+                    LogDebug($"Divination {div} {tierNames[tierNum + j]}");
                     Dictionary<int, string[]> cardsByOrder = GetDivinationDictForOneDivination(atOManager, tierNum + j, div);
-                    LogDebug($"Divination {div.ToString()} {tierNames[tierNum + j]}");
+                    if (cardsByOrder == null)
+                    {
+                        LogDebug("cardsByOrder is null");
+                        return;
+                    }                    
                     foreach (KeyValuePair<int, string[]> kvp in cardsByOrder)
                     {
-                        string HeroName = theTeam[kvp.Key].SourceName.ToString() ?? "Unknown";
-                        LogDebug($"Hero {kvp.Key.ToString()}, {HeroName}. Cards: {string.Join(", ", kvp.Value)}");
+                        if (kvp.Value == null || kvp.Value.Length == 0 || kvp.Key >= theTeam.Length)
+                        {
+                            LogDebug("Row is null");
+                            return;
+                        }
+                        List<string> cards = new List<string>();
+                        for (int k = 0; k < kvp.Value.Length; k++)
+                        {
+                            CardData cardData = Globals.Instance.GetCardData(kvp.Value[k], false);
+                            if (cardData == null)
+                            {
+                                cards.Add("");
+                            }
+                            else
+                            {
+                                cards.Add(GetCardName(cardData));
+                            }
+                            
+                        }
+                        string HeroName = theTeam[kvp.Key]?.SourceName?.ToString() ?? "Unknown";
+                        LogDebug($"Hero {kvp.Key}, {HeroName}. Cards: {string.Join(", ", cards)}");
                     }
 
                 }
@@ -95,10 +120,11 @@ namespace DivinationLogger
 
         public static void WriteDivinationsToFile(AtOManager atOManager)
         {
+            LogDebug("WriteDivinationsToFile");
             int startingDivinationNum = atOManager.divinationsNumber;
-            int tierNum = atOManager.GetTownTier() == 3 ? 2 : Math.Max(atOManager.GetTownTier(), 1);
+            int tierNum = atOManager.GetTownTier() == 3 ? 2 : Math.Min(atOManager.GetTownTier(), 1);
             int tiers = 3;
-            int totalDivs = 5;
+            int totalDivs = DivinationsToLog.Value;
 
             Dictionary<int, string> tierNames = new Dictionary<int, string>();
             tierNames.Add(0, "Fast");
@@ -109,6 +135,7 @@ namespace DivinationLogger
             List<string> headerRow = ["Divination"];
 
             List<List<string>> divinationResults = new List<List<string>>();
+            divinationResults.Add(headerRow);
 
             if (atOManager.GetTeam() == null)
             {
@@ -117,14 +144,6 @@ namespace DivinationLogger
             }
             Hero[] theTeam = atOManager.GetTeam();
 
-            List<string> headerCol = new List<string>();
-            for (int i = 0; i < totalDivs; i++)
-            {
-                for (int j = 0; j < theTeam.Count(); j++)
-                {
-                    headerCol.Add($"Divination {i}: {theTeam[j].SourceName}");
-                }
-            }
 
             for (int j = 0; j < tiers; j++)
             {
@@ -132,7 +151,7 @@ namespace DivinationLogger
                 string tierName = tierNames[tierNum + j];
                 for (int i = 0; i < nCards; i++)
                 {
-                    headerRow.Add($"{tierName}: Card {i.ToString()}");
+                    headerRow.Add($"{tierName}: Card {i+1}");
                 }
             }
 
@@ -150,18 +169,42 @@ namespace DivinationLogger
                 for (int j = 0; j < tiers; j++)
                 {
 
-                    // divinationRow.Add($"{theTeam[j].SourceName}: Divination {divIteration}");
+                    
                     int currentDiv = divIteration + startingDivinationNum;
-                    Dictionary<int, string[]> cardsByOrder = GetDivinationDictForOneDivination(atOManager, tierNum + j, currentDiv);
-                    LogDebug($"Divination {currentDiv.ToString()} {tierNames[tierNum + j]}");
+                    LogDebug($"Divination {currentDiv} {tierNames[tierNum + j]}");
+                    Dictionary<int, string[]> cardsByOrder = GetDivinationDictForOneDivination(atOManager, tierNum + j, currentDiv);                    
+                    
                     foreach (KeyValuePair<int, string[]> kvp in cardsByOrder)
                     {
                         int charIndex = kvp.Key;
-                        string[] listOfCards = kvp.Value;
+                        // int headerIndex = charIndex + divIteration * theTeam.Count();
+                        List<string> listOfCards = new List<string>();
+                        for (int k = 0; k < 4; k++)
+                        {
+                            if ( k >= kvp.Value.Length)
+                            {
+                                listOfCards.Add("");
+                                continue;
+                            }
+                            CardData cardData = Globals.Instance.GetCardData(kvp.Value[k], false);
+                            if (cardData == null)
+                            {
+                                listOfCards.Add("");
+                            }
+                            else
+                            {
+                                listOfCards.Add(GetCardName(cardData));
+                            }
+                        }
+                        if(j==0)
+                        {
+                            string charName = (theTeam[charIndex]?.SourceName?.ToString() ?? "Missing Hero") + $" Divination {currentDiv+1}";
+                            listOfCards.Insert(0, charName);
+                        }
                         divinationSetOfChars[charIndex].AddRange(listOfCards);
-                        // string charName = theTeam[kvp.Key].SourceName.ToString() ?? "Unknown" + $"_{currentDiv.ToString()}";
-                        string HeroName = theTeam[kvp.Key].SourceName.ToString() ?? "Unknown";
-                        LogDebug($"Hero {HeroName} {kvp.Key.ToString()} cards: {string.Join(", ", kvp.Value)}");
+                        
+                        // string HeroName = theTeam[kvp.Key]?.SourceName?.ToString() ?? "Unknown";
+                        // LogDebug($"Hero {HeroName} {kvp.Key} cards: {string.Join(", ", kvp.Value)}");
                         // divinationRow.AddRange(kvp.Value);
                     }
                 }
@@ -170,6 +213,14 @@ namespace DivinationLogger
                     divinationResults.Add(row);
                 }
             }
+            
+            SaveDivinationsToFile(atOManager, divinationResults);
+        }
+
+
+        public static void SaveDivinationsToFile(AtOManager atOManager, List<List<string>> divinationResults)
+        {
+
             string filePath;
             if (AbsoluteFolderPath.Value == "" || AbsoluteFolderPath.Value == null)
             {
@@ -180,19 +231,20 @@ namespace DivinationLogger
             {
                 filePath = AbsoluteFolderPath.Value;
             }
-            filePath = "/Users/kevinmccoy/Library/Application Support/Steam/steamapps/common/Across the Obelisk/BepInEx/Mod Development/Custom Mods/DivinationLogger";
             string fileName = $"DivinationResults_Act_{atOManager.GetActNumberForText()}.csv";
+            string fileNameE = $"DivinationResults_Act_{atOManager.GetActNumberForText()}.xlsx";
             if (SaveToCSV.Value)
             {
-                WriteListToCsv(divinationResults, Path.Combine(filePath, fileName));
+                WriteDataToCSV(divinationResults, Path.Combine(filePath, fileName));
             }
 
             if (SaveToExcel.Value)
             {
-                // WriteListToCsv(divinationResults, Path.Combine(filePath, fileName));
+                LogDebug("Excel is currently not working");
+                WriteDataToExcel(divinationResults, Path.Combine(filePath, fileNameE));
             }
-
         }
+
 
         public static Dictionary<int, string[]> GetDivinationDictForOneDivination(AtOManager atOManager, int tierNum, int ndivinations)
         {
@@ -202,9 +254,6 @@ namespace DivinationLogger
             TierRewardData townDivinationTier = Globals.Instance.GetTierRewardData(GetDivinationTier(tierNum));
             Dictionary<int, string[]> cardsByOrder = new Dictionary<int, string[]>();
             TierRewardData tierRewardBase;
-            // int typeOfReward;
-            // int dustQuantity;
-            // int cardTierModFromCorruption;
             int numCardsReward = tierNum <= 1 ? 3 : 4;
             TierRewardData tierRewardInf;
             TierRewardData tierReward;
@@ -222,8 +271,6 @@ namespace DivinationLogger
             // dustQuantity = tierRewardBase.Dust;
             int num9 = tierRewardBase.TierNum;
             AtOManager.Instance.currentRewardTier = num9;
-            // if ((UnityEngine.Object)thermometerData != (UnityEngine.Object)null)
-            //     num9 += thermometerData.CardBonus + cardTierModFromCorruption;
             if (num9 < 0)
                 num9 = 0;
             tierRewardBase = Globals.Instance.GetTierRewardData(num9);
@@ -319,8 +366,9 @@ namespace DivinationLogger
             return cardsByOrder;
         }
 
-        public static void WriteListToCsv(List<List<string>> data, string filePath)
+        public static void WriteDataToCSV(List<List<string>> data, string filePath)
         {
+            LogDebug("WriteListToCsv");
             try
             {
                 StringBuilder csvContent = new StringBuilder();
@@ -331,6 +379,11 @@ namespace DivinationLogger
                         field.Contains(",") || field.Contains("\"")
                             ? $"\"{field.Replace("\"", "\"\"")}\""
                             : field)));
+                }
+                string outputDirectory = Path.GetDirectoryName(filePath);
+                if (!Directory.Exists(outputDirectory))
+                {
+                    Directory.CreateDirectory(outputDirectory);
                 }
 
                 File.WriteAllText(filePath, csvContent.ToString());
@@ -343,8 +396,10 @@ namespace DivinationLogger
             }
         }
 
-        public static void WriteListToExcel(List<List<string>> data, string filePath)
+        public static void WriteDataToExcel(List<List<string>> data, string filePath)
         {
+
+            LogDebug("WriteListToExcel");
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
             using (var package = new ExcelPackage())
@@ -361,12 +416,36 @@ namespace DivinationLogger
 
                 worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
 
+                string outputDirectory = Path.GetDirectoryName(filePath);
+                if (!Directory.Exists(outputDirectory))
+                {
+                    Directory.CreateDirectory(outputDirectory);
+                }
+
                 FileInfo fileInfo = new FileInfo(filePath);
                 package.SaveAs(fileInfo);
             }
 
             LogDebug($"Excel file created at: {filePath}");
         }
+
+        public static string GetCardName(CardData cardData)
+        {
+            string output = cardData.CardName;
+            if (cardData.CardUpgraded == Enums.CardUpgraded.A)
+            {
+                output += " (Blue)";
+            }
+            else if (cardData.CardUpgraded == Enums.CardUpgraded.B)
+            {
+                output += " (Yellow)";
+            }
+            else if (cardData.CardUpgraded == Enums.CardUpgraded.Rare)
+            {
+                output += " (Corrupted)";
+            }
+            return output;
+        } 
 
 
     }
