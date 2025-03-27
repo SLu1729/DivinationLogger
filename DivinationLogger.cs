@@ -61,6 +61,10 @@ namespace DivinationLogger
             LogDebug("LogDivinations");
             int startingDivinationNum = atOManager.divinationsNumber;
             int tierNum = atOManager.GetTownTier() == 3 ? 2 : Math.Min(atOManager.GetTownTier(), 1);
+            if (atOManager.GetTownTier() == 2)
+            {
+                tierNum -= 1;
+            }
             int tiers = 3;
             int totalDivs = DivinationsToLog.Value;
             // 0 for Fast, 1 for Basic, 2 for Advanced, 3 for Premium, 4 for Supreme
@@ -123,6 +127,10 @@ namespace DivinationLogger
             LogDebug("WriteDivinationsToFile");
             int startingDivinationNum = atOManager.divinationsNumber;
             int tierNum = atOManager.GetTownTier() == 3 ? 2 : Math.Min(atOManager.GetTownTier(), 1);
+            if (atOManager.GetTownTier() == 2)
+            {
+                tierNum -= 1;
+            }
             int tiers = 3;
             int totalDivs = DivinationsToLog.Value;
 
@@ -198,7 +206,7 @@ namespace DivinationLogger
                         }
                         if(j==0)
                         {
-                            string charName = (theTeam[charIndex]?.SourceName?.ToString() ?? "Missing Hero") + $" Divination {currentDiv+1}";
+                            string charName = $"D{currentDiv+1}: " + (theTeam[charIndex]?.SourceName?.ToString() ?? "Missing Hero");
                             listOfCards.Insert(0, charName);
                         }
                         divinationSetOfChars[charIndex].AddRange(listOfCards);
@@ -241,7 +249,7 @@ namespace DivinationLogger
             if (SaveToExcel.Value)
             {
                 LogDebug("Excel is currently not working");
-                WriteDataToExcel(divinationResults, Path.Combine(filePath, fileNameE));
+                // WriteDataToExcel(divinationResults, Path.Combine(filePath, fileNameE));
             }
         }
 
