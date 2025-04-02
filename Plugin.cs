@@ -64,6 +64,7 @@ namespace DivinationLogger{
             SaveFolder = Config.Bind(new ConfigDefinition(PluginInfo.PLUGIN_NAME, "Save Folder"), "", new ConfigDescription("Folder to Save to, if left blank, will write to the default save folder/your current seed"));
             AbsoluteFolderPath = Config.Bind(new ConfigDefinition(PluginInfo.PLUGIN_NAME, "Absolute Folder Path"), "", new ConfigDescription("Absolute FilePath to save to. If left blank, will default to Save Folder. Overrides Save Folder"));
             DivinationsToLog = Config.Bind(new ConfigDefinition(PluginInfo.PLUGIN_NAME, "Number of Divinations"), 10, new ConfigDescription("The number of divinations that will be automatically logged whenever you enter town."));
+            DivinationsToLog = Config.Bind(new ConfigDefinition(PluginInfo.PLUGIN_NAME, "Number of Divinations"), 15, new ConfigDescription("The number of divinations that will be automatically logged whenever you enter town."));
 
             // apply patches
             if(EnableMod.Value)
