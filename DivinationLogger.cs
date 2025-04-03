@@ -9,10 +9,11 @@ using UnityEngine.Windows.Speech;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using OfficeOpenXml;
+// using OfficeOpenXml;
 using System.IO;
 using System.Text;
-using static Microsoft.IO.RecyclableMemoryStream;
+// using static Microsoft.IO.RecyclableMemoryStream;
+using MiniExcelLibs;
 
 // Make sure your namespace is the same everywhere
 namespace DivinationLogger
@@ -33,7 +34,7 @@ namespace DivinationLogger
         {
             LogDebug("GoToTownPostfix");
             // GetDivinationTier();
-            if(LogToLogOutput.Value) {LogDivinations(__instance);}
+            if (LogToLogOutput.Value) { LogDivinations(__instance); }
             WriteDivinationsToFile(__instance);
         }
 
@@ -92,7 +93,7 @@ namespace DivinationLogger
                     {
                         LogDebug("cardsByOrder is null");
                         return;
-                    }                    
+                    }
                     foreach (KeyValuePair<int, string[]> kvp in cardsByOrder)
                     {
                         if (kvp.Value == null || kvp.Value.Length == 0 || kvp.Key >= theTeam.Length)
@@ -112,7 +113,7 @@ namespace DivinationLogger
                             {
                                 cards.Add(GetCardName(cardData));
                             }
-                            
+
                         }
                         string HeroName = theTeam[kvp.Key]?.SourceName?.ToString() ?? "Unknown";
                         LogDebug($"Hero {kvp.Key}, {HeroName}. Cards: {string.Join(", ", cards)}");
@@ -159,7 +160,7 @@ namespace DivinationLogger
                 string tierName = tierNames[tierNum + j];
                 for (int i = 0; i < nCards; i++)
                 {
-                    headerRow.Add($"{tierName}: Card {i+1}");
+                    headerRow.Add($"{tierName}: Card {i + 1}");
                 }
             }
 
@@ -177,11 +178,11 @@ namespace DivinationLogger
                 for (int j = 0; j < tiers; j++)
                 {
 
-                    
+
                     int currentDiv = divIteration + startingDivinationNum;
                     LogDebug($"Divination {currentDiv} {tierNames[tierNum + j]}");
-                    Dictionary<int, string[]> cardsByOrder = GetDivinationDictForOneDivination(atOManager, tierNum + j, currentDiv);                    
-                    
+                    Dictionary<int, string[]> cardsByOrder = GetDivinationDictForOneDivination(atOManager, tierNum + j, currentDiv);
+
                     foreach (KeyValuePair<int, string[]> kvp in cardsByOrder)
                     {
                         int charIndex = kvp.Key;
@@ -189,7 +190,7 @@ namespace DivinationLogger
                         List<string> listOfCards = new List<string>();
                         for (int k = 0; k < 4; k++)
                         {
-                            if ( k >= kvp.Value.Length)
+                            if (k >= kvp.Value.Length)
                             {
                                 listOfCards.Add("");
                                 continue;
@@ -204,13 +205,13 @@ namespace DivinationLogger
                                 listOfCards.Add(GetCardName(cardData));
                             }
                         }
-                        if(j==0)
+                        if (j == 0)
                         {
-                            string charName = $"D{currentDiv+1}: " + (theTeam[charIndex]?.SourceName?.ToString() ?? "Missing Hero");
+                            string charName = $"D{currentDiv + 1}: " + (theTeam[charIndex]?.SourceName?.ToString() ?? "Missing Hero");
                             listOfCards.Insert(0, charName);
                         }
                         divinationSetOfChars[charIndex].AddRange(listOfCards);
-                        
+
                         // string HeroName = theTeam[kvp.Key]?.SourceName?.ToString() ?? "Unknown";
                         // LogDebug($"Hero {HeroName} {kvp.Key} cards: {string.Join(", ", kvp.Value)}");
                         // divinationRow.AddRange(kvp.Value);
@@ -221,7 +222,7 @@ namespace DivinationLogger
                     divinationResults.Add(row);
                 }
             }
-            
+
             SaveDivinationsToFile(atOManager, divinationResults);
         }
 
@@ -248,8 +249,8 @@ namespace DivinationLogger
 
             if (SaveToExcel.Value)
             {
-                LogDebug("Excel is currently not working");
-                // WriteDataToExcel(divinationResults, Path.Combine(filePath, fileNameE));
+                // LogDebug("Excel is currently not working");
+                WriteDataToExcel(divinationResults, Path.Combine(filePath, fileNameE));
             }
         }
 
@@ -408,34 +409,57 @@ namespace DivinationLogger
         {
 
             LogDebug("WriteListToExcel");
-            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-
-            using (var package = new ExcelPackage())
+            
+            List<string> headerRow = data.FirstOrDefault();
+            if (headerRow == null)
             {
-                var worksheet = package.Workbook.Worksheets.Add("Data");
-
-                for (int rowIndex = 0; rowIndex < data.Count; rowIndex++)
-                {
-                    for (int colIndex = 0; colIndex < data[rowIndex].Count; colIndex++)
-                    {
-                        worksheet.Cells[rowIndex + 1, colIndex + 1].Value = data[rowIndex][colIndex];
-                    }
-                }
-
-                worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
-
-                string outputDirectory = Path.GetDirectoryName(filePath);
-                if (!Directory.Exists(outputDirectory))
-                {
-                    Directory.CreateDirectory(outputDirectory);
-                }
-
-                FileInfo fileInfo = new FileInfo(filePath);
-                package.SaveAs(fileInfo);
+                LogError("headerRow is empty or null");
+                return;
             }
+
+            List<Dictionary<string, object>> values = [];
+            
+            for (int i = 1; i < data.Count; i++)
+            {
+                List<string> row = data[i];
+                Dictionary<string,object> toAdd = [];
+                for (int j = 0; j < headerRow.Count && j < row.Count; j++)
+                {
+                    toAdd.Add(headerRow[j],row[j]);
+                }
+                values.Add(toAdd);
+            }            
+
+            // var values = data.Skip(1)
+            //     .Select(row => headerRow.Zip(row, (header, value) => new { header, value })
+            //                             .ToDictionary(x => x.header, x => (object)x.value))
+            //     .ToList();
+            // LogDebug(ConvertListToReadableString(values));
+            MiniExcel.SaveAs(filePath, values);
 
             LogDebug($"Excel file created at: {filePath}");
         }
+
+        // public static string ConvertListToReadableString(List<Dictionary<string, object>> values)
+        // {
+        //     if (values == null || values.Count == 0)
+        //     {
+        //         return "No data available.";
+        //     }
+
+        //     StringBuilder result = new StringBuilder();
+
+        //     for (int i = 0; i < values.Count; i++)
+        //     {
+        //         result.AppendLine($"Row {i + 1}:");
+        //         foreach (var kvp in values[i])
+        //         {
+        //             result.AppendLine($"  {kvp.Key}: {kvp.Value}");
+        //         }
+        //     }
+
+        //     return result.ToString();
+        // }
 
         public static string GetCardName(CardData cardData)
         {
@@ -453,7 +477,7 @@ namespace DivinationLogger
                 output += " (Corrupted)";
             }
             return output;
-        } 
+        }
 
 
     }
