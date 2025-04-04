@@ -127,11 +127,7 @@ namespace DivinationLogger
         {
             LogDebug("WriteDivinationsToFile");
             int startingDivinationNum = atOManager.divinationsNumber;
-            int tierNum = atOManager.GetTownTier() == 3 ? 2 : Math.Min(atOManager.GetTownTier(), 1);
-            if (atOManager.GetTownTier() == 2)
-            {
-                tierNum -= 1;
-            }
+            int tierNum = Math.Min(Math.Max(atOManager.GetTownTier() - 1, 0 ), 2);
             int tiers = 3;
             int totalDivs = DivinationsToLog.Value;
 
