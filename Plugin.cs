@@ -42,6 +42,8 @@ namespace DivinationLogger{
         public static ConfigEntry<bool> LogToLogOutput { get; set; }
         public static ConfigEntry<string> AbsoluteFolderPath { get; set; }
         public static ConfigEntry<int> DivinationsToLog { get; set; }
+        public static ConfigEntry<bool> AddSpaces { get; set; }
+        public static ConfigEntry<bool> AddFormatting { get; set; }
         internal int ModDate = int.Parse(DateTime.Today.ToString("yyyyMMdd"));
         private readonly Harmony harmony = new(PluginInfo.PLUGIN_GUID);
         internal static ManualLogSource Log;
@@ -64,7 +66,9 @@ namespace DivinationLogger{
             SaveFolder = Config.Bind(new ConfigDefinition(PluginInfo.PLUGIN_NAME, "Save Folder"), "", new ConfigDescription("Folder to Save to, if left blank, will write to the default save folder/your current seed"));
             AbsoluteFolderPath = Config.Bind(new ConfigDefinition(PluginInfo.PLUGIN_NAME, "Absolute Folder Path"), "", new ConfigDescription("Absolute FilePath to save to. If left blank, will default to Save Folder. Overrides Save Folder"));
             DivinationsToLog = Config.Bind(new ConfigDefinition(PluginInfo.PLUGIN_NAME, "Number of Divinations"), 10, new ConfigDescription("The number of divinations that will be automatically logged whenever you enter town."));
-
+            AddSpaces = Config.Bind(new ConfigDefinition(PluginInfo.PLUGIN_NAME, "Add Spaces to File"), false, new ConfigDescription("Adds blank rows/columns in between the divinations and divination types"));
+            AddFormatting = Config.Bind(new ConfigDefinition(PluginInfo.PLUGIN_NAME, "Add Formatting to Excel"), false, new ConfigDescription("Adds formatting, coloring cells if they are upgraded, and adding borders."));
+            
             // apply patches
             if(EnableMod.Value)
             {

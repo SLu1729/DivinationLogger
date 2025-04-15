@@ -14,6 +14,7 @@ using System.IO;
 using System.Text;
 // using static Microsoft.IO.RecyclableMemoryStream;
 using MiniExcelLibs;
+using MiniExcelLibs.OpenXml;
 
 // Make sure your namespace is the same everywhere
 namespace DivinationLogger
@@ -127,7 +128,7 @@ namespace DivinationLogger
         {
             LogDebug("WriteDivinationsToFile");
             int startingDivinationNum = atOManager.divinationsNumber;
-            int tierNum = Math.Min(Math.Max(atOManager.GetTownTier() - 1, 0 ), 2);
+            int tierNum = Math.Min(Math.Max(atOManager.GetTownTier() - 1, 0), 2);
             int tiers = 3;
             int totalDivs = DivinationsToLog.Value;
 
@@ -149,19 +150,26 @@ namespace DivinationLogger
             }
             Hero[] theTeam = atOManager.GetTeam();
 
-
+            bool insertBlank = true;
             for (int j = 0; j < tiers; j++)
             {
                 int nCards = 4;
                 string tierName = tierNames[tierNum + j];
+                
                 for (int i = 0; i < nCards; i++)
                 {
+                    if(AddSpaces.Value && insertBlank)
+                    {
+                        headerRow.Add("");
+                        insertBlank = false;
+                    }
                     headerRow.Add($"{tierName}: Card {i + 1}");
                 }
+                insertBlank = true;
             }
 
             // Row = totalDivs_characterName
-
+            // skipFirst = true;
             for (int divIteration = 0; divIteration < totalDivs; divIteration++)
             {
                 // List<string> divinationRow = new List<string>();
@@ -170,6 +178,7 @@ namespace DivinationLogger
                 {
                     divinationSetOfChars.Add(new List<string>());
                 }
+                insertBlank = true;
 
                 for (int j = 0; j < tiers; j++)
                 {
@@ -186,6 +195,12 @@ namespace DivinationLogger
                         List<string> listOfCards = new List<string>();
                         for (int k = 0; k < 4; k++)
                         {
+                            if(AddSpaces.Value && insertBlank)
+                            {
+                                listOfCards.Add("");
+                                // listOfCards.Insert(0, charName);divinationSetOfChars[charIndex].Add("");
+                                insertBlank = false;
+                            }
                             if (k >= kvp.Value.Length)
                             {
                                 listOfCards.Add("");
@@ -200,12 +215,16 @@ namespace DivinationLogger
                             {
                                 listOfCards.Add(GetCardName(cardData));
                             }
+                            
                         }
+                        insertBlank = true;
+                        
                         if (j == 0)
                         {
                             string charName = $"D{currentDiv + 1}: " + (theTeam[charIndex]?.SourceName?.ToString() ?? "Missing Hero");
                             listOfCards.Insert(0, charName);
                         }
+                        
                         divinationSetOfChars[charIndex].AddRange(listOfCards);
 
                         // string HeroName = theTeam[kvp.Key]?.SourceName?.ToString() ?? "Unknown";
@@ -213,9 +232,16 @@ namespace DivinationLogger
                         // divinationRow.AddRange(kvp.Value);
                     }
                 }
+                int l = 0;
                 foreach (List<string> row in divinationSetOfChars)
                 {
                     divinationResults.Add(row);
+                    l = row.Count();
+                }
+                if(AddSpaces.Value)
+                {
+                    List<string> blankRow = Enumerable.Repeat("", l).ToList();
+                    divinationResults.Add(blankRow);
                 }
             }
 
@@ -246,6 +272,8 @@ namespace DivinationLogger
             if (SaveToExcel.Value)
             {
                 // LogDebug("Excel is currently not working");
+                // MiniExcel.ConvertCsvToXlsx(Path.Combine(filePath, fileName), Path.Combine(filePath, fileNameE));
+
                 WriteDataToExcel(divinationResults, Path.Combine(filePath, fileNameE));
             }
         }
@@ -281,7 +309,8 @@ namespace DivinationLogger
             tierRewardBase = Globals.Instance.GetTierRewardData(num9);
             tierRewardInf = num9 <= 0 ? tierRewardBase : Globals.Instance.GetTierRewardData(num9 - 1);
             CardData _cardData = (CardData)null;
-            for (int key = 0; key < theTeam.Length; ++key)
+            int key = 0;
+            for (; key < theTeam.Length; ++key)
             {
                 if (theTeam[key] == null || (UnityEngine.Object)theTeam[key].HeroData == (UnityEngine.Object)null)
                 {
@@ -405,7 +434,7 @@ namespace DivinationLogger
         {
 
             LogDebug("WriteListToExcel");
-            
+
             List<string> headerRow = data.FirstOrDefault();
             if (headerRow == null)
             {
@@ -414,48 +443,37 @@ namespace DivinationLogger
             }
 
             List<Dictionary<string, object>> values = [];
-            
+
             for (int i = 1; i < data.Count; i++)
             {
                 List<string> row = data[i];
-                Dictionary<string,object> toAdd = [];
+                Dictionary<string, object> toAdd = [];
                 for (int j = 0; j < headerRow.Count && j < row.Count; j++)
                 {
-                    toAdd.Add(headerRow[j],row[j]);
+                    toAdd.Add(headerRow[j], row[j]);
                 }
                 values.Add(toAdd);
-            }            
+            }
+            if (AddFormatting.Value)
+            {
+                OpenXmlConfiguration configuration = new OpenXmlConfiguration()
+                {
+                    FastMode = true,
+                    EnableAutoWidth = true,
+                    FreezeColumnCount = 1,
+                    FreezeRowCount = 1,    
 
-            // var values = data.Skip(1)
-            //     .Select(row => headerRow.Zip(row, (header, value) => new { header, value })
-            //                             .ToDictionary(x => x.header, x => (object)x.value))
-            //     .ToList();
-            // LogDebug(ConvertListToReadableString(values));
-            MiniExcel.SaveAs(filePath, values);
+                };
+                // string filePathTest = Path.GetDirectoryName(filePath) + "test.xlsx";
+                MiniExcel.SaveAs(filePath, values, configuration: configuration);
+            }
 
+
+            // MiniExcel.SaveAs(filePath, values);
             LogDebug($"Excel file created at: {filePath}");
         }
 
-        // public static string ConvertListToReadableString(List<Dictionary<string, object>> values)
-        // {
-        //     if (values == null || values.Count == 0)
-        //     {
-        //         return "No data available.";
-        //     }
 
-        //     StringBuilder result = new StringBuilder();
-
-        //     for (int i = 0; i < values.Count; i++)
-        //     {
-        //         result.AppendLine($"Row {i + 1}:");
-        //         foreach (var kvp in values[i])
-        //         {
-        //             result.AppendLine($"  {kvp.Key}: {kvp.Value}");
-        //         }
-        //     }
-
-        //     return result.ToString();
-        // }
 
         public static string GetCardName(CardData cardData)
         {
